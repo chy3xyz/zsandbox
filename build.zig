@@ -145,6 +145,9 @@ pub fn build(b: *std.Build) void {
         .root_module = test_mod,
     });
     const run_tests = b.addRunArtifact(test_exe);
+    // Tests load compiled guest WASM from zig-out/bin, so they need
+    // the install step (all guest artifacts) to complete first.
+    run_tests.step.dependOn(b.getInstallStep());
     b.step("test", "Run sandbox tests").dependOn(&run_tests.step);
 }
 

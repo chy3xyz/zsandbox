@@ -28,16 +28,26 @@ pub const WASM_I64: c_int = 1;
 pub const WASM_F32: c_int = 2;
 pub const WASM_F64: c_int = 3;
 
+// GC reference types (wasmtime >= 35 with WASMTIME_FEATURE_GC): 24 bytes.
 pub const wasmtime_anyref_t = extern struct {
     store_id: u64 = 0,
     __private1: u32 = 0,
     __private2: u32 = 0,
+    __private3: ?*anyopaque = null,
 };
 
 pub const wasmtime_externref_t = extern struct {
     store_id: u64 = 0,
     __private1: u32 = 0,
     __private2: u32 = 0,
+    __private3: ?*anyopaque = null,
+};
+
+pub const wasmtime_exnref_t = extern struct {
+    store_id: u64 = 0,
+    __private1: u32 = 0,
+    __private2: u32 = 0,
+    __private3: ?*anyopaque = null,
 };
 
 pub const wasmtime_v128 = [16]u8;
@@ -49,6 +59,7 @@ pub const wasmtime_valunion_t = extern union {
     f64: f64,
     anyref: wasmtime_anyref_t,
     externref: wasmtime_externref_t,
+    exnref: wasmtime_exnref_t,
     funcref: wasmtime_func_t,
     v128: wasmtime_v128,
 };
@@ -64,14 +75,41 @@ pub const wasmtime_val_t = extern struct {
 
 pub const wasmtime_func_t = extern struct {
     store_id: u64 = 0,
-    __private1: u32 = 0,
-    __private2: u32 = 0,
+    __private: ?*anyopaque = null,
 };
 
+// wasmtime 49 nests an anonymous inner struct, which forces 16-byte
+// alignment for {store_id, __private1} before __private2 is appended:
+// inner(16) + u32 + tail pad = 24 bytes total.
 pub const wasmtime_memory_t = extern struct {
     store_id: u64 = 0,
     __private1: u32 = 0,
+    __pad1: u32 = 0,
     __private2: u32 = 0,
+    __pad2: u32 = 0,
+};
+
+pub const wasmtime_table_t = extern struct {
+    store_id: u64 = 0,
+    __private1: u32 = 0,
+    __pad1: u32 = 0,
+    __private2: u32 = 0,
+    __pad2: u32 = 0,
+};
+
+pub const wasmtime_global_t = extern struct {
+    store_id: u64 = 0,
+    __private1: u32 = 0,
+    __private2: u32 = 0,
+    __private3: u32 = 0,
+};
+
+pub const wasmtime_tag_t = extern struct {
+    store_id: u64 = 0,
+    __private1: u32 = 0,
+    __pad1: u32 = 0,
+    __private2: u32 = 0,
+    __pad2: u32 = 0,
 };
 
 pub const wasmtime_extern_kind_t = u8;
@@ -82,9 +120,11 @@ pub const WASMTIME_EXTERN_MEMORY: c_int = 3;
 
 pub const wasmtime_extern_union_t = extern union {
     func: wasmtime_func_t,
-    global: extern struct { store_id: u64 = 0, __private1: u32 = 0, __private2: u32 = 0 },
-    table: extern struct { store_id: u64 = 0, __private1: u32 = 0, __private2: u32 = 0 },
+    global: wasmtime_global_t,
+    table: wasmtime_table_t,
     memory: wasmtime_memory_t,
+    sharedmemory: ?*anyopaque,
+    tag: wasmtime_tag_t,
 };
 
 pub const wasmtime_extern_t = extern struct {
@@ -94,9 +134,26 @@ pub const wasmtime_extern_t = extern struct {
 
 pub const wasmtime_instance_t = extern struct {
     store_id: u64 = 0,
-    __private1: u32 = 0,
-    __private2: u32 = 0,
+    __private: usize = 0,
 };
+
+// ------------------------------------------------------------------
+// ABI layout guards — fail at compile time if the declarations above
+// drift from the linked wasmtime C API (checked against wasmtime 49).
+// ------------------------------------------------------------------
+
+comptime {
+    const std = @import("std");
+    std.debug.assert(@sizeOf(wasmtime_val_t) == 32);
+    std.debug.assert(@sizeOf(wasmtime_valunion_t) == 24);
+    std.debug.assert(@sizeOf(wasmtime_extern_t) == 32);
+    std.debug.assert(@sizeOf(wasmtime_extern_union_t) == 24);
+    std.debug.assert(@sizeOf(wasmtime_memory_t) == 24);
+    std.debug.assert(@sizeOf(wasmtime_func_t) == 16);
+    std.debug.assert(@sizeOf(wasmtime_instance_t) == 16);
+    std.debug.assert(@offsetOf(wasmtime_val_t, "of") == 8);
+    std.debug.assert(@offsetOf(wasmtime_extern_t, "of") == 8);
+}
 
 // ------------------------------------------------------------------
 // Vectors

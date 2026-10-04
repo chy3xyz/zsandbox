@@ -129,7 +129,7 @@ ZSandbox treats **all guest code as hostile**. The following defenses are enforc
 ### Prerequisites
 
 - **Zig** 0.17.0-dev (master)
-- **Wasmtime** 33.0.0+ (C library)
+- **Wasmtime** 49.0.0+ (C library; hand-written bindings in `src/sandbox_bindings.zig` are ABI-matched to the GC-enabled build, verified against 49.x via comptime size assertions)
 - **LMDB** 0.9.33+ (for persistent state)
 
 macOS (Homebrew):

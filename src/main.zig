@@ -201,14 +201,15 @@ pub fn main(init: std.process.Init) !void {
     defer depth_test.deinit();
     depth_test.setAddress("0xDEPTH_TEST");
 
-    // Push to max depth
+    // Push to max depth. CallStack borrows the address slices, so we keep
+    // the allocated strings and free them once the depth test is done.
+    var depth_addrs: [sandbox.CallStack.max_call_depth][]u8 = undefined;
     var i: u32 = 0;
     while (i < sandbox.CallStack.max_call_depth) : (i += 1) {
-        try depth_test.call_stack.push(
-            try std.fmt.allocPrint(allocator, "0xADDR_{d}", .{i}),
-            "func",
-        );
+        depth_addrs[i] = try std.fmt.allocPrint(allocator, "0xADDR_{d}", .{i});
+        try depth_test.call_stack.push(depth_addrs[i], "func");
     }
+    defer for (depth_addrs) |addr| allocator.free(addr);
     log.info("Pushed {d} frames", .{depth_test.call_stack.len});
 
     // Next push should fail

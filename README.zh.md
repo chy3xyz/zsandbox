@@ -130,7 +130,7 @@ ZSandbox 将**所有 Guest 代码视为敌对代码**。以下防御措施被强
 ### 环境依赖
 
 - **Zig** 0.17.0-dev (master)
-- **Wasmtime** 33.0.0+ (C 库)
+- **Wasmtime** 49.0.0+（C 库；`src/sandbox_bindings.zig` 的手写绑定与启用 GC 的构建进行 ABI 匹配，通过 comptime 大小断言对照 49.x 校验）
 - **LMDB** 0.9.33+ (持久化状态)
 
 macOS (Homebrew):

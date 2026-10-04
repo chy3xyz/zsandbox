@@ -54,13 +54,16 @@ pub fn validateModule(
         return Error.BadVersion;
     }
 
-    // Parse imports and exports from the binary.
-    var imports = std.ArrayList([]const u8).empty;
-    defer imports.deinit(allocator);
-    var exports = std.ArrayList([]const u8).empty;
-    defer exports.deinit(allocator);
+    // Parse imports and exports from the binary. The parsed name strings
+    // are scratch data — use an arena so they are all released at once.
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const parse_alloc = arena.allocator();
 
-    scanImportsExports(allocator, wasm_bytes, &imports, &exports) catch |err| {
+    var imports = std.ArrayList([]const u8).empty;
+    var exports = std.ArrayList([]const u8).empty;
+
+    scanImportsExports(parse_alloc, wasm_bytes, &imports, &exports) catch |err| {
         log.warn("Failed to scan module: {s}", .{@errorName(err)});
         return Error.BadMagic; // reuse as generic parse error
     };
